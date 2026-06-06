@@ -1,15 +1,6 @@
 // Description: this file is the main component of the chat application. It allows users to join a room and send messages to that room. 
 // It also listens for incoming messages and updates the chat accordingly.
 
-import { useEffect, useState } from "react";
-import { socket } from "./socket";
-
-// shoerter version of this would be:
-// git add .
-//git commit -m "Update"
-//git push origin main
-
-
 // Description: this file is the main component of the chat application. It allows users to join a room and send messages to that room. 
 // It also listens for incoming messages and updates the chat accordingly.
 
@@ -29,30 +20,41 @@ import { socket } from "./socket";
 //git commit -m "Update"
 //git push origin main
 
+// to start the project you need to start the server first by using cd server then npm start and then start the client  using the cd command then npm.
+
+import { useEffect, useState } from "react";
+import { socket } from "./socket";
 
 
 function App() {
   const [message, setMessage] = useState("");
   const [chat, setChat] = useState([]);
   const [room, setRoom] = useState("");
+  const [joinedRoom, setJoinedRoom] = useState("");
 
   // Join room
   const joinRoom = () => {
-    if (room !== "") {
-      socket.emit("join_room", room);
+    const nextRoom = room.trim();
+
+    if (nextRoom !== "") {
+      socket.emit("join_room", nextRoom);
+      setJoinedRoom(nextRoom);
+      setChat([]);
+      setMessage("");
     }
   };
 
   // Send message
   const sendMessage = () => {
+    if (!joinedRoom || message.trim() === "") return;
+
     const messageData = {
-      room,
-      message,
+      room: joinedRoom,
+      message: message.trim(),
       time: new Date().toLocaleTimeString()
     };
 
     socket.emit("send_message", messageData);
-
     setChat((prev) => [...prev, messageData]);
     setMessage("");
   };
@@ -62,27 +64,87 @@ function App() {
     socket.on("receive_message", (data) => {
       setChat((prev) => [...prev, data]);
     });
+
+    return () => {
+      socket.off("receive_message");
+    };
   }, []);
+// styling for the container of the message box and the input field and the button
+  const styles = {
+    container: {
+      position: 'fixed',
+      bottom: '20px',
+      right: '20px',
+      zIndex: 1000,
+      background: '#fff',
+      padding: '16px',
+      borderRadius: '12px',
+      boxShadow: '0 4px 12px rgba(0, 0, 0, 0.12)',
+      width: '100%',
+      maxWidth: '860px',
+      boxSizing: 'border-box'
+    },
+    // styling for the message box
+    textBox: {
+      width: '100%',
+      minHeight: '100px',
+      padding: '12px',
+      borderRadius: '8px',
+      border: '1px solid #ccc',
+      boxShadow: 'inset 0 1px 3px rgba(0, 0, 0, 0.1)',
+      resize: 'none',
+      fontSize: '16px',
+      outline: 'none',
+      marginBottom: '12px',
+      boxSizing: 'border-box',
+      display: 'block'
+    },
+    // styling for the input field
+    input: {
+      width: '100%',
+      padding: '10px',
+      borderRadius: '8px',
+      border: '1px solid #ccc',
+      marginBottom: '12px',
+      boxSizing: 'border-box',
+      display: 'block'
+    },
+    // styling for the button
+    button: {
+      padding: '10px 16px',
+      borderRadius: '8px',
+      border: 'none',
+      background: '#007bff',
+      color: '#fff',
+      cursor: 'pointer',
+      marginRight: '8px',
+      boxSizing: 'border-box'
+    }
+  };
 
   return (
-    <div>
+    <div style={styles.container}>
       <h1>Chat App</h1>
-
+      <p style={{ marginBottom: '8px', color: '#555' }}>
+        {joinedRoom ? `Current room: ${joinedRoom}` : 'Enter a room name first, then join it to start chatting.'}
+      </p>
       <input
-        placeholder="Room name"
+        style={styles.input}
+        value={room}
+        placeholder="Create or enter a room name"
         onChange={(e) => setRoom(e.target.value)}
       />
-      <button onClick={joinRoom}>Join Room</button>
-
-      <br />
-
-      <input
-        placeholder="Message..."
+      <button style={styles.button} onClick={joinRoom}>Create / Join Room</button>
+      <textarea
+        style={styles.textBox}
         value={message}
+        placeholder={joinedRoom ? 'Type your message' : 'Join a room before sending messages'}
         onChange={(e) => setMessage(e.target.value)}
+        disabled={!joinedRoom}
       />
-      <button onClick={sendMessage}>Send</button>
-
+      <button style={styles.button} onClick={sendMessage} disabled={!joinedRoom}>
+        Send
+      </button>
       <div>
         {chat.map((msg, i) => (
           <p key={i}>
