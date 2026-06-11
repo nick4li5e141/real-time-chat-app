@@ -51,6 +51,12 @@ function App() {
     setScreen("memberLogin");
   };
 
+  const handleMemberRoomEnter = ({ name, room, mode }) => {
+    socket.emit("join_room", room);
+    setUser({ name, room, mode });
+    setScreen("chat");
+  };
+
   return (
     <div
       style={{
@@ -71,7 +77,7 @@ function App() {
       ) : screen === "newMember" ? (
         <NewMember onBack={handleBack} />
       ) : screen === "memberLogin" ? (
-        <MemberLoginPage onBack={handleBack} />
+        <MemberLoginPage onBack={handleBack} onEnterRoom={handleMemberRoomEnter} />
       ) : (
         <ChatPage
           displayName={user.name}

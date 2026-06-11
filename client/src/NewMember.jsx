@@ -2,6 +2,7 @@
 // this page is for testing the account creation flow, it doesn't actually create accounts or connect to the backend, 
 // it's just a demo page to show how the flow would work.
 import React from "react";
+import { createAccount } from "./accounts";
 
 function NewMember({ onBack }) {
   const [name, setName] = React.useState("");
@@ -10,7 +11,16 @@ function NewMember({ onBack }) {
 
   const handleCreate = () => {
     if (!name.trim() || !email.trim() || !password.trim()) return;
-    alert("Account created (demo only)\nName: " + name.trim());
+
+    const result = createAccount({ name, email, password });
+
+    if (!result.success) {
+      alert(result.message);
+      return;
+    }
+
+    alert("Account created successfully. You can now sign in as a member.");
+    onBack();
   };
 
   const styles = {

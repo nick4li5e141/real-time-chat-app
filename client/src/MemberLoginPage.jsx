@@ -1,15 +1,48 @@
 import React from "react";
+import { validateAccount } from "./accounts";
+import { createRoom, loadRooms } from "./rooms";
 
-function MemberLoginPage({ onBack }) {
+function MemberLoginPage({ onBack, onEnterRoom }) {
   const [name, setName] = React.useState("");
   const [password, setPassword] = React.useState("");
   const [loggedIn, setLoggedIn] = React.useState(false);
-
-  const joinedRooms = ["General", "Design", "Support", "Project Updates"];
+  const [errorMessage, setErrorMessage] = React.useState("");
+  const [memberAccount, setMemberAccount] = React.useState(null);
+  const [rooms, setRooms] = React.useState(loadRooms());
+  const [newRoomName, setNewRoomName] = React.useState("");
 
   const handleLogin = () => {
-    if (!name.trim() || !password.trim()) return;
+    const trimmedName = name.trim();
+    const trimmedPassword = password.trim();
+
+    if (!trimmedName || !trimmedPassword) {
+      setErrorMessage("Please enter both your member name and password.");
+      return;
+    }
+
+    const account = validateAccount(trimmedName, trimmedPassword);
+
+    if (!account) {
+      setErrorMessage("No matching member account was found.");
+      return;
+    }
+
+    setMemberAccount(account);
+    setRooms(loadRooms());
+    setErrorMessage("");
     setLoggedIn(true);
+  };
+
+  const handleCreateRoom = () => {
+    const result = createRoom(newRoomName);
+    if (!result.success) {
+      setErrorMessage(result.message);
+      return;
+    }
+
+    setRooms(result.rooms);
+    setNewRoomName("");
+    setErrorMessage("");
   };
 
   const styles = {
@@ -74,18 +107,47 @@ function MemberLoginPage({ onBack }) {
     <div style={styles.card}>
       {loggedIn ? (
         <>
-          <h1 style={{ marginTop: 0 }}>Welcome back, {name.trim()}</h1>
+          <h1 style={{ marginTop: 0 }}>Welcome back, {memberAccount?.name}</h1>
           <p style={{ color: "#475569", marginBottom: "8px" }}>
-            Here are the rooms you have joined as a member.
+            Create a room or open one that already exists.
           </p>
+
+          <input
+            style={styles.input}
+            value={newRoomName}
+            onChange={(e) => setNewRoomName(e.target.value)}
+            placeholder="New room name"
+          />
+
+          <div style={styles.buttonRow}>
+            <button style={styles.button} onClick={handleCreateRoom}>Create Room</button>
+            <button style={styles.secondaryButton} onClick={onBack}>Sign-Out</button>
+          </div>
+
+          {errorMessage ? <p style={{ color: "#b91c1c", marginTop: "8px" }}>{errorMessage}</p> : null}
+
+          <h2 style={{ fontSize: "18px", margin: "16px 0 8px" }}>Available rooms</h2>
           <ul style={styles.roomList}>
-            {joinedRooms.map((room) => (
-              <li key={room} style={styles.roomItem}>{room}</li>
+            {rooms.map((room) => (
+              <li key={room} style={styles.roomItem}>
+                <button
+                  onClick={() => onEnterRoom({ name: memberAccount.name, room, mode: "member" })}
+                  style={{
+                    border: "none",
+                    background: "transparent",
+                    color: "#1e3a8a",
+                    cursor: "pointer",
+                    fontWeight: 600,
+                    padding: 0,
+                    textAlign: "left",
+                    width: "100%"
+                  }}
+                >
+                  {room}
+                </button>
+              </li>
             ))}
           </ul>
-          <div style={{ ...styles.buttonRow, marginTop: "16px" }}>
-            <button style={styles.secondaryButton} onClick={onBack}>Back</button>
-          </div>
         </>
       ) : (
         <>
@@ -93,6 +155,9 @@ function MemberLoginPage({ onBack }) {
           <p style={{ color: "#475569", marginBottom: "16px" }}>
             Enter your member name and password to view your joined rooms.
           </p>
+          {errorMessage ? (
+            <p style={{ color: "#b91c1c", marginBottom: "12px" }}>{errorMessage}</p>
+          ) : null}
 
           <input
             style={styles.input}
