@@ -1,27 +1,3 @@
-// Description: this file is the main component of the chat application. It allows users to join a room and send messages to that room. 
-// It also listens for incoming messages and updates the chat accordingly.
-
-// Description: this file is the main component of the chat application. It allows users to join a room and send messages to that room. 
-// It also listens for incoming messages and updates the chat accordingly.
-
-// THIS IS WHERE THE CLIENT INTERFACE WOULD BE 
-
-//cd /mnt/c/Users/nikou/OneDrive/Desktop/chat-app
-//git add .
-//git commit -m "Initial commit"
-//git branch -M main
-//git remote add origin https://github.com/YOUR_USERNAME/chat-app.git
-//git push -u origin main
-//import { useEffect, useState } from "react";
-//import { socket } from "./socket";
-
-// shoerter version of this would be:
-// git add .
-//git commit -m "Update"
-//git push origin main
-
-// to start the project you need to start the server first by using cd server then npm start and then start the client  using the cd command then npm.
-
 import { useState } from "react";
 import { socket } from "./socket";
 import LoginPage from "./LoginPage";
@@ -40,6 +16,16 @@ function App() {
   };
 
   const handleBack = () => {
+    if (user?.mode === "member") {
+      setScreen("memberLogin");
+      return;
+    }
+
+    setScreen("login");
+  };
+
+  const handleSignOut = () => {
+    setUser(null);
     setScreen("login");
   };
 
@@ -69,16 +55,27 @@ function App() {
       }}
     >
       {screen === "login" ? (
+        // if the user is on the login screen, show the login page
         <LoginPage
           onEnter={handleEnter}
           onMemberClick={handleMemberClick}
           onMemberLoginClick={handleMemberLoginClick}
         />
+        // if the user is on the login screen, show the login page
       ) : screen === "newMember" ? (
+        // if the user clicks the "I'm a member" button, show the member login page
         <NewMember onBack={handleBack} />
       ) : screen === "memberLogin" ? (
-        <MemberLoginPage onBack={handleBack} onEnterRoom={handleMemberRoomEnter} />
+        // if the user clicks the "Create an account" button, show the new member page
+        <MemberLoginPage
+          onBack={handleBack}
+          onSignOut={handleSignOut}
+          onEnterRoom={handleMemberRoomEnter}
+          initialLoggedIn={user?.mode === "member"}
+          initialMemberAccount={user}
+        />
       ) : (
+        // if the user is logged in, show the chat page
         <ChatPage
           displayName={user.name}
           mode={user.mode}

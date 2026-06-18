@@ -1,15 +1,31 @@
+
+
 import React from "react";
 import { validateAccount } from "./accounts";
-import { createRoom, loadRooms } from "./rooms";
+import { createRoom, loadRooms, saveRooms } from "./rooms";
 
-function MemberLoginPage({ onBack, onEnterRoom }) {
+function MemberLoginPage({
+  onBack,
+  onSignOut,
+  onEnterRoom,
+  initialLoggedIn = false,
+  initialMemberAccount = null
+}) {
   const [name, setName] = React.useState("");
   const [password, setPassword] = React.useState("");
-  const [loggedIn, setLoggedIn] = React.useState(false);
+  const [showPassword, setShowPassword] = React.useState(false);
+  const [loggedIn, setLoggedIn] = React.useState(initialLoggedIn);
   const [errorMessage, setErrorMessage] = React.useState("");
-  const [memberAccount, setMemberAccount] = React.useState(null);
+  const [memberAccount, setMemberAccount] = React.useState(initialMemberAccount);
   const [rooms, setRooms] = React.useState(loadRooms());
   const [newRoomName, setNewRoomName] = React.useState("");
+  const [deleteMode, setDeleteMode] = React.useState(false);
+  const [selectedRooms, setSelectedRooms] = React.useState([]);
+
+  React.useEffect(() => {
+    setLoggedIn(initialLoggedIn);
+    setMemberAccount(initialMemberAccount);
+  }, [initialLoggedIn, initialMemberAccount]);
 
   const handleLogin = () => {
     const trimmedName = name.trim();
@@ -45,6 +61,28 @@ function MemberLoginPage({ onBack, onEnterRoom }) {
     setErrorMessage("");
   };
 
+  const toggleDeleteMode = () => {
+    setDeleteMode((prev) => !prev);
+    setSelectedRooms([]);
+  };
+
+  const toggleRoomSelection = (room) => {
+    setSelectedRooms((prev) =>
+      prev.includes(room) ? prev.filter((r) => r !== room) : [...prev, room]
+    );
+  };
+
+  const handleDeleteRooms = () => {
+    if (selectedRooms.length === 0) return;
+
+    const updatedRooms = rooms.filter((room) => !selectedRooms.includes(room));
+    saveRooms(updatedRooms);
+    setRooms(updatedRooms);
+    setSelectedRooms([]);
+    setDeleteMode(false);
+    setErrorMessage("");
+  };
+
   const styles = {
     card: {
       maxWidth: "420px",
@@ -63,6 +101,22 @@ function MemberLoginPage({ onBack, onEnterRoom }) {
       border: "1px solid #d0d7de",
       marginBottom: "12px",
       boxSizing: "border-box"
+    },
+    passwordRow: {
+      position: "relative",
+      display: "flex",
+      alignItems: "center"
+    },
+    passwordToggle: {
+      position: "absolute",
+      right: "10px",
+      top: "50%",
+      transform: "translateY(-50%)",
+      background: "transparent",
+      border: "none",
+      color: "#2563eb",
+      cursor: "pointer",
+      fontWeight: 600
     },
     buttonRow: {
       display: "flex",
@@ -121,33 +175,82 @@ function MemberLoginPage({ onBack, onEnterRoom }) {
 
           <div style={styles.buttonRow}>
             <button style={styles.button} onClick={handleCreateRoom}>Create Room</button>
-            <button style={styles.secondaryButton} onClick={onBack}>Sign-Out</button>
+            <button style={styles.secondaryButton} onClick={toggleDeleteMode}>
+              {deleteMode ? "Cancel" : "Delete Rooms"}
+            </button>
+            <button style={styles.secondaryButton} onClick={onSignOut}>Sign-Out</button>
           </div>
 
           {errorMessage ? <p style={{ color: "#b91c1c", marginTop: "8px" }}>{errorMessage}</p> : null}
 
           <h2 style={{ fontSize: "18px", margin: "16px 0 8px" }}>Available rooms</h2>
           <ul style={styles.roomList}>
-            {rooms.map((room) => (
-              <li key={room} style={styles.roomItem}>
-                <button
-                  onClick={() => onEnterRoom({ name: memberAccount.name, room, mode: "member" })}
+            {rooms.map((room) => {
+              const isSelected = selectedRooms.includes(room);
+
+              return (
+                <li
+                  key={room}
                   style={{
-                    border: "none",
-                    background: "transparent",
-                    color: "#1e3a8a",
-                    cursor: "pointer",
-                    fontWeight: 600,
-                    padding: 0,
-                    textAlign: "left",
-                    width: "100%"
+                    ...styles.roomItem,
+                    background: isSelected ? "#dbeafe" : "#eff6ff",
+                    border: isSelected ? "1px solid #60a5fa" : "1px solid transparent"
                   }}
                 >
-                  {room}
-                </button>
-              </li>
-            ))}
+                  {deleteMode ? (
+                    <label
+                      style={{
+                        display: "flex",
+                        alignItems: "center",
+                        gap: "8px",
+                        cursor: "pointer",
+                        width: "100%"
+                      }}
+                    >
+                      <input
+                        type="checkbox"
+                        checked={isSelected}
+                        onChange={() => toggleRoomSelection(room)}
+                      />
+                      <span>{room}</span>
+                    </label>
+                  ) : (
+                    <button
+                      onClick={() =>
+                        onEnterRoom({ name: memberAccount.name, room, mode: "member" })
+                      }
+                      style={{
+                        border: "none",
+                        background: "transparent",
+                        color: "#1e3a8a",
+                        cursor: "pointer",
+                        fontWeight: 600,
+                        padding: 0,
+                        textAlign: "left",
+                        width: "100%"
+                      }}
+                    >
+                      {room}
+                    </button>
+                  )}
+                </li>
+              );
+            })}
           </ul>
+
+          {deleteMode ? (
+            <button
+              style={{
+                ...styles.button,
+                width: "100%",
+                marginTop: "12px"
+              }}
+              onClick={handleDeleteRooms}
+              disabled={selectedRooms.length === 0}
+            >
+              {selectedRooms.length > 0 ? "Delete" : "Delete Rooms"}
+            </button>
+          ) : null}
         </>
       ) : (
         <>
@@ -165,13 +268,22 @@ function MemberLoginPage({ onBack, onEnterRoom }) {
             onChange={(e) => setName(e.target.value)}
             placeholder="Member name"
           />
-          <input
-            style={styles.input}
-            type="password"
-            value={password}
-            onChange={(e) => setPassword(e.target.value)}
-            placeholder="Password"
-          />
+          <div style={styles.passwordRow}>
+            <input
+              style={{ ...styles.input, marginBottom: 0 }}
+              type={showPassword ? "text" : "password"}
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+              placeholder="Password"
+            />
+            <button
+              type="button"
+              style={styles.passwordToggle}
+              onClick={() => setShowPassword((prev) => !prev)}
+            >
+              {showPassword ? "Hide" : "Show"}
+            </button>
+          </div>
 
           <div style={styles.buttonRow}>
             <button style={styles.button} onClick={handleLogin}>Continue</button>

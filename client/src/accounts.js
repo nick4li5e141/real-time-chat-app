@@ -1,3 +1,6 @@
+
+// all account management is done client-side for this demo, so we can store accounts in localStorage
+
 const STORAGE_KEY = "chat-app-member-accounts";
 
 const defaultAccounts = [
@@ -7,7 +10,7 @@ const defaultAccounts = [
     email: "demo@example.com",
     password: "123456",
     joinedRooms: ["General", "Design"]
-  }
+  },
 ];
 
 export function loadAccounts() {
