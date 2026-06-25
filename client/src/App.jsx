@@ -4,13 +4,15 @@ import LoginPage from "./LoginPage";
 import ChatPage from "./ChatPage";
 import NewMember from "./NewMember";
 import MemberLoginPage from "./MemberLoginPage";
+import SettingsPage from "./SettingsPage";
 
 function App() {
   const [screen, setScreen] = useState("login");
   const [user, setUser] = useState(null);
+  const [theme, setTheme] = useState("light");
 
   const handleEnter = ({ name, room, mode }) => {
-    socket.emit("join_room", room);
+    socket.emit("join_room", { room, name });
     setUser({ name, room, mode });
     setScreen("chat");
   };
@@ -37,8 +39,16 @@ function App() {
     setScreen("memberLogin");
   };
 
+  const handleSettingsClick = () => {
+    setScreen("settings");
+  };
+
+  const handleThemeToggle = () => {
+    setTheme((prev) => (prev === "light" ? "dark" : "light"));
+  };
+
   const handleMemberRoomEnter = ({ name, room, mode }) => {
-    socket.emit("join_room", room);
+    socket.emit("join_room", { room, name });
     setUser({ name, room, mode });
     setScreen("chat");
   };
@@ -47,7 +57,7 @@ function App() {
     <div
       style={{
         minHeight: "100vh",
-        background: "linear-gradient(135deg, #eff6ff, #f8fafc)",
+        background: theme === "dark" ? "linear-gradient(135deg, #020617, #111827)" : "linear-gradient(135deg, #eff6ff, #f8fafc)",
         display: "flex",
         alignItems: "center",
         justifyContent: "center",
@@ -60,11 +70,15 @@ function App() {
           onEnter={handleEnter}
           onMemberClick={handleMemberClick}
           onMemberLoginClick={handleMemberLoginClick}
+          onSettingsClick={handleSettingsClick}
+          theme={theme}
         />
         // if the user is on the login screen, show the login page
       ) : screen === "newMember" ? (
         // if the user clicks the "I'm a member" button, show the member login page
         <NewMember onBack={handleBack} />
+      ) : screen === "settings" ? (
+        <SettingsPage theme={theme} onToggleTheme={handleThemeToggle} onBack={handleBack} />
       ) : screen === "memberLogin" ? (
         // if the user clicks the "Create an account" button, show the new member page
         <MemberLoginPage
@@ -73,6 +87,7 @@ function App() {
           onEnterRoom={handleMemberRoomEnter}
           initialLoggedIn={user?.mode === "member"}
           initialMemberAccount={user}
+          theme={theme}
         />
       ) : (
         // if the user is logged in, show the chat page
@@ -82,6 +97,7 @@ function App() {
           room={user.room}
           onBack={handleBack}
           socket={socket}
+          theme={theme}
         />
       )}
     </div>

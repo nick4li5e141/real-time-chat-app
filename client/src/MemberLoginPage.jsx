@@ -3,6 +3,7 @@
 import React from "react";
 import { validateAccount } from "./accounts";
 import { createRoom, loadRooms, saveRooms } from "./rooms";
+import { socket } from "./socket";
 
 function MemberLoginPage({
   onBack,
@@ -21,11 +22,36 @@ function MemberLoginPage({
   const [newRoomName, setNewRoomName] = React.useState("");
   const [deleteMode, setDeleteMode] = React.useState(false);
   const [selectedRooms, setSelectedRooms] = React.useState([]);
+  const [pendingInvites, setPendingInvites] = React.useState([]);
 
   React.useEffect(() => {
     setLoggedIn(initialLoggedIn);
     setMemberAccount(initialMemberAccount);
   }, [initialLoggedIn, initialMemberAccount]);
+
+  React.useEffect(() => {
+    const handleInvite = (data) => {
+      setPendingInvites((prev) => {
+        if (prev.some((invite) => invite.room === data.room && invite.fromUser === data.fromUser)) {
+          return prev;
+        }
+        return [...prev, data];
+      });
+    };
+
+    const handleInviteDecision = (data) => {
+      setPendingInvites((prev) => prev.filter((invite) => invite.room !== data.room || invite.fromUser !== data.fromUser));
+      setErrorMessage(data.message || "");
+    };
+
+    socket.on("receive_invite", handleInvite);
+    socket.on("invite_decision", handleInviteDecision);
+
+    return () => {
+      socket.off("receive_invite", handleInvite);
+      socket.off("invite_decision", handleInviteDecision);
+    };
+  }, []);
 
   const handleLogin = () => {
     const trimmedName = name.trim();
@@ -81,6 +107,21 @@ function MemberLoginPage({
     setSelectedRooms([]);
     setDeleteMode(false);
     setErrorMessage("");
+  };
+
+  const respondToInvite = (invite, accepted) => {
+    socket.emit("respond_to_invite", {
+      room: invite.room,
+      fromUser: invite.fromUser,
+      toUser: memberAccount?.name,
+      accepted
+    });
+
+    setPendingInvites((prev) => prev.filter((item) => item.room !== invite.room || item.fromUser !== invite.fromUser));
+
+    if (!accepted) {
+      setErrorMessage(`You rejected the invite to ${invite.room}.`);
+    }
   };
 
   const styles = {
@@ -154,6 +195,13 @@ function MemberLoginPage({
       background: "#eff6ff",
       marginBottom: "8px",
       color: "#1e3a8a"
+    },
+    inviteItem: {
+      padding: "10px 12px",
+      borderRadius: "10px",
+      background: "#fef3c7",
+      marginBottom: "8px",
+      color: "#92400e"
     }
   };
 
@@ -184,6 +232,29 @@ function MemberLoginPage({
           {errorMessage ? <p style={{ color: "#b91c1c", marginTop: "8px" }}>{errorMessage}</p> : null}
 
           <h2 style={{ fontSize: "18px", margin: "16px 0 8px" }}>Available rooms</h2>
+          {pendingInvites.length > 0 ? (
+            <>
+              <h3 style={{ fontSize: "14px", margin: "8px 0 6px" }}>Pending invites</h3>
+              <ul style={styles.roomList}>
+                {pendingInvites.map((invite) => (
+                  <li key={`${invite.room}-${invite.fromUser}`} style={styles.inviteItem}>
+                    <div style={{ fontWeight: 600, marginBottom: "6px" }}>
+                      {invite.fromUser} invited you to {invite.room}
+                    </div>
+                    <div style={{ display: "flex", gap: "8px" }}>
+                      <button style={{ ...styles.button, flex: "1 1 80px", padding: "8px 10px" }} onClick={() => respondToInvite(invite, true)}>
+                        Yes
+                      </button>
+                      <button style={{ ...styles.secondaryButton, flex: "1 1 80px", padding: "8px 10px" }} onClick={() => respondToInvite(invite, false)}>
+                        No
+                      </button>
+                    </div>
+                  </li>
+                ))}
+              </ul>
+            </>
+          ) : null}
+
           <ul style={styles.roomList}>
             {rooms.map((room) => {
               const isSelected = selectedRooms.includes(room);
